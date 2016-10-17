@@ -20,7 +20,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{C0B1A035-A035-4278-8D0E-6907F218D641}</ProjectGuid>
-    <RootNamespace>Extension_template</RootNamespace>
+    <RootNamespace>CurlDump</RootNamespace>
     <WindowsTargetPlatformVersion>8.1</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -181,6 +181,7 @@
     <ClInclude Include="Source\Utilities\Binarymodification\ImportAddressTable.h" />
     <ClInclude Include="Source\Utilities\Buffers\Bytebuffer.h" />
     <ClInclude Include="Source\Utilities\Cryptography\Hashing\FNV1.h" />
+    <ClInclude Include="Source\Utilities\Dump\ACPDump.h" />
     <ClInclude Include="Source\Utilities\Files\CSVManager.h" />
     <ClInclude Include="Source\Utilities\Files\Filesystem.h" />
     <ClInclude Include="Source\Utilities\Strings\Debugstring.h" />
@@ -192,6 +193,7 @@
     <ClCompile Include="Source\Utilities\Binarymodification\ImportAddressTable.cpp" />
     <ClCompile Include="Source\Utilities\Binarymodification\Stomphook.cpp" />
     <ClCompile Include="Source\Utilities\Buffers\Bytebuffer.cpp" />
+    <ClCompile Include="Source\Utilities\Dump\ACPDump.cpp" />
     <ClCompile Include="Source\Utilities\Files\CSVManager.cpp" />
     <ClCompile Include="Source\Utilities\Files\Filesystem.cpp" />
     <ClCompile Include="Source\Utilities\Strings\Debugstring.cpp" />
