@@ -103,7 +103,9 @@ int __cdecl curl_setopt_(void *handle, signed int option, va_list param) {
 			va_end(va);
 		};
 
+#ifdef _DEBUG
 		setopt(CURLOPT_VERBOSE, 1);
+#endif
 		setopt(CURLOPT_WRITEDATA, instance);
 		setopt(CURLOPT_READDATA, instance);
 		setopt(CURLOPT_WRITEFUNCTION, &curl_write_callback);
@@ -112,9 +114,8 @@ int __cdecl curl_setopt_(void *handle, signed int option, va_list param) {
 		redirect_set_[handle] = instance;
 	}
 
-	redirect_mutex_.unlock();
-
 	instance = redirect_set_[handle];
+	redirect_mutex_.unlock();
 	if (option == CURLOPT_WRITEDATA) {
 		instance->WriteData = va_arg(param, void *);
 		return 0;
@@ -142,9 +143,9 @@ int __cdecl curl_close_(void *handle) {
 		if (it->first == handle) {
 			delete it->second;
 			it = redirect_set_.erase(it);
-		} else {
-			++it;
-		}
+			break;
+		} 
+		++it;
 	}
 	redirect_mutex_.unlock();
 
@@ -248,19 +249,6 @@ extern "C" {
 	}
 
 	EXPORT_ATTR void __cdecl onMessage(uint32_t message, ...) {
-		va_list variadic;
-		va_start(variadic, message);
-
-		// Messages are a 32bit FNV1a hash of a string
-		switch (message)
-		{
-
-		case FNV1a_Compiletime_32("DefaultCase"):
-		default:
-			break;
-		}
-
-		va_end(variadic);
 	}
 }
 
