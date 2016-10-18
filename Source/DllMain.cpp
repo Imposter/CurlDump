@@ -33,6 +33,7 @@ typedef size_t (*__cdecl CurlIOCallback)(char *data, size_t size, size_t bytes, 
 
 struct CurlInstance {
 	void *Handle;
+	bool Used;
 	void *WriteData;
 	void *ReadData;
 	CurlIOCallback WriteCallback;
@@ -40,27 +41,33 @@ struct CurlInstance {
 };
 
 indigo::ACPDump acp_dump_;
-std::map<void *, CurlInstance *> redirect_set_;
-std::mutex redirect_mutex_;
+std::map<void *, CurlInstance *> instances_;
+std::mutex instances_mutex_;
 indigo::CallHook curl_setopt_hook_;
 indigo::CallHook curl_close_hook_;
 
 size_t curl_write_callback(char *data, size_t size, size_t bytes, CurlInstance *instance) {
-	// actual size == size * bytes
-	printf("CurlDump: (0x%08p) Writing %d bytes\n", instance->Handle, size * bytes);
-	acp_dump_.Write(SOCK_STREAM, IPPROTO_TCP, static_cast<uint32_t>(inet_addr("127.0.0.1")),
-		reinterpret_cast<uint16_t>(instance->Handle), reinterpret_cast<uint32_t>(instance->Handle), 1337, data, size * bytes);
+	printf("CurlDump: (0x%08p) Writing %d bytes\n", instance->Handle, bytes);
 
-	return instance->WriteCallback != nullptr ? instance->WriteCallback(data, size, bytes, instance->WriteData) : 0;
+	// Mark as used
+	instance->Used = true;
+
+	acp_dump_.Write(SOCK_STREAM, IPPROTO_TCP, static_cast<uint32_t>(inet_addr("127.0.0.1")),
+		reinterpret_cast<uint16_t>(instance->Handle), reinterpret_cast<uint32_t>(instance->Handle), 1337, data, bytes);
+
+	return instance->WriteCallback != nullptr ? instance->WriteCallback(data, size, bytes, instance->WriteData) : bytes;
 }
 
 size_t curl_read_callback(char *data, size_t size, size_t bytes, CurlInstance *instance) {
-	// actual size == size * bytes
-	printf("CurlDump: (0x%08p) Reading %d bytes\n", instance->Handle, size * bytes);
-	acp_dump_.Write(SOCK_STREAM, IPPROTO_TCP, reinterpret_cast<uint32_t>(instance->Handle), 1337,
-		static_cast<uint32_t>(inet_addr("127.0.0.1")), reinterpret_cast<uint16_t>(instance->Handle), data, size * bytes);
+	printf("CurlDump: (0x%08p) Reading %d bytes\n", instance->Handle, bytes);
 
-	return instance->ReadCallback != nullptr ? instance->ReadCallback(data, size, bytes, instance->ReadData) : 0;
+	// Mark as used
+	instance->Used = true;
+
+	acp_dump_.Write(SOCK_STREAM, IPPROTO_TCP, reinterpret_cast<uint32_t>(instance->Handle), 1337,
+		static_cast<uint32_t>(inet_addr("127.0.0.1")), reinterpret_cast<uint16_t>(instance->Handle), data, bytes);
+
+	return instance->ReadCallback != nullptr ? instance->ReadCallback(data, size, bytes, instance->ReadData) : bytes;
 }
 
 // int __cdecl Curl_setopt(void *handle, signed int option, va_list param)
@@ -73,8 +80,19 @@ int __cdecl curl_setopt_(void *handle, signed int option, va_list param) {
 	// Get the original
 	auto curl_setopt = curl_setopt_hook_.Get<int(*__cdecl)(void *, signed int, va_list)>();
 
-	redirect_mutex_.lock();
-	if (redirect_set_.find(handle) == redirect_set_.end()) {
+	instances_mutex_.lock();
+
+	// Check if an instance already exists and has been used
+	std::map<void *, CurlInstance *>::iterator it;
+	if ((it = instances_.find(handle)) != instances_.end()) {
+		if (it->second->Used) {
+			// Remove it from our instances list
+			delete it->second;
+			instances_.erase(it);
+		}
+	}
+
+	if (instances_.find(handle) == instances_.end()) {
 		// Initialize
 		printf("CurlDump: Monitoring easy handle 0x%08p\n", handle);
 
@@ -103,34 +121,34 @@ int __cdecl curl_setopt_(void *handle, signed int option, va_list param) {
 			va_end(va);
 		};
 
-#ifdef _DEBUG
-		setopt(CURLOPT_VERBOSE, 1);
-#endif
+		setopt(CURLOPT_VERBOSE, 0);
 		setopt(CURLOPT_WRITEDATA, instance);
 		setopt(CURLOPT_READDATA, instance);
 		setopt(CURLOPT_WRITEFUNCTION, &curl_write_callback);
 		setopt(CURLOPT_READFUNCTION, &curl_read_callback);
 
-		redirect_set_[handle] = instance;
-	}
+		instances_[handle] = instance;
+		instances_mutex_.unlock();
+	} else {
+		instance = instances_[handle];
+		instances_mutex_.unlock();
 
-	instance = redirect_set_[handle];
-	redirect_mutex_.unlock();
-	if (option == CURLOPT_WRITEDATA) {
-		instance->WriteData = va_arg(param, void *);
-		return 0;
-	} 
-	if (option == CURLOPT_READDATA) {
-		instance->ReadData = va_arg(param, void *);
-		return 0;
-	} 
-	if (option == CURLOPT_WRITEFUNCTION) {
-		instance->WriteCallback = va_arg(param, CurlIOCallback);
-		return 0;
-	} 
-	if (option == CURLOPT_READFUNCTION) {
-		instance->ReadCallback = va_arg(param, CurlIOCallback);
-		return 0;
+		if (option == CURLOPT_WRITEDATA) {
+			instance->WriteData = va_arg(param, void *);
+			return 0;
+		}
+		if (option == CURLOPT_READDATA) {
+			instance->ReadData = va_arg(param, void *);
+			return 0;
+		}
+		if (option == CURLOPT_WRITEFUNCTION) {
+			instance->WriteCallback = va_arg(param, CurlIOCallback);
+			return 0;
+		}
+		if (option == CURLOPT_READFUNCTION) {
+			instance->ReadCallback = va_arg(param, CurlIOCallback);
+			return 0;
+		}
 	}
 
 	return curl_setopt(handle, option, param);
@@ -138,16 +156,17 @@ int __cdecl curl_setopt_(void *handle, signed int option, va_list param) {
 
 // int __cdecl Curl_close(void *handle)
 int __cdecl curl_close_(void *handle) {
-	redirect_mutex_.lock();
-	for (auto it = redirect_set_.begin(); it != redirect_set_.end();) {
+	printf("CurlDump: Curl_close(0x%08p)\n", handle);
+	instances_mutex_.lock();
+	for (auto it = instances_.begin(); it != instances_.end();) {
 		if (it->first == handle) {
 			delete it->second;
-			it = redirect_set_.erase(it);
+			instances_.erase(it);
 			break;
 		} 
 		++it;
 	}
-	redirect_mutex_.unlock();
+	instances_mutex_.unlock();
 
 	return curl_close_hook_.Get<int(*__cdecl)(void *)>()(handle);
 }
@@ -155,12 +174,12 @@ int __cdecl curl_close_(void *handle) {
 extern "C" {
 	EXPORT_ATTR void __cdecl onExtensionUnloading(void) {
 		// Remove curl instances
-		redirect_mutex_.lock();
-		for (auto it = redirect_set_.begin(); it != redirect_set_.end();) {
+		instances_mutex_.lock();
+		for (auto it = instances_.begin(); it != instances_.end();) {
 			delete it->second;
-			it = redirect_set_.erase(it);
+			it = instances_.erase(it);
 		}
-		redirect_mutex_.unlock();
+		instances_mutex_.unlock();
 
 		// Close dump
 		acp_dump_.Close();
