@@ -37,6 +37,7 @@ indigo::CallHook curl_close_hook_;
 
 size_t curl_write_callback(char *data, size_t size, size_t bytes, void *userdata) {
 	// actual size == size * bytes
+	printf("CurlDump: Writing %d bytes\n", size);
 	acp_dump_.Write(SOCK_STREAM, IPPROTO_TCP, static_cast<uint32_t>(inet_addr("127.0.0.1")),
 		reinterpret_cast<uint16_t>(userdata), reinterpret_cast<uint32_t>(userdata), 1337, data, size * bytes);
 
@@ -45,6 +46,7 @@ size_t curl_write_callback(char *data, size_t size, size_t bytes, void *userdata
 
 size_t curl_read_callback(char *data, size_t size, size_t bytes, void *userdata) {
 	// actual size == size * bytes
+	printf("CurlDump: Reading %d bytes\n", size);
 	acp_dump_.Write(SOCK_STREAM, IPPROTO_TCP, reinterpret_cast<uint32_t>(userdata), 1337, 
 		static_cast<uint32_t>(inet_addr("127.0.0.1")), reinterpret_cast<uint16_t>(userdata), data, size * bytes);
 
@@ -59,6 +61,11 @@ int __cdecl curl_setopt_(void *handle, signed int option, unsigned int *param) {
 	redirect_mutex_.lock();
 	if (redirect_set_.find(handle) == redirect_set_.end()) {
 		// Initialize
+		printf("CurlDump: Redirecting handle 0x%08p\n", handle);
+
+		// TODO/NOTE: curl_setopt takes a variadic argument, see curl_easy_setopt
+
+		curl_setopt(handle, CURLOPT_VERBOSE, reinterpret_cast<unsigned int *>(1));
 		curl_setopt(handle, CURLOPT_WRITEDATA, static_cast<unsigned int *>(handle));
 		curl_setopt(handle, CURLOPT_READDATA, static_cast<unsigned int *>(handle));
 		curl_setopt(handle, CURLOPT_WRITEFUNCTION, reinterpret_cast<unsigned int *>(&curl_write_callback));
@@ -99,6 +106,8 @@ extern "C" {
 	EXPORT_ATTR void __cdecl onInitializationStart(void) {
 #ifdef _DEBUG
 		indigo::Console::Show("Ayria Console");
+
+		MessageBoxA(nullptr, "Attach debugger now!", "CurlDump - Debug", MB_OK);
 #endif
 
 		// Open the config file
@@ -124,32 +133,43 @@ extern "C" {
 		}
 
 		// Get addresses for Curl_setopt and Curl_close
-		void *setopt = reinterpret_cast<void *>(config.GetInteger("CURL", "SetOpt"));
-		void *close = reinterpret_cast<void *>(config.GetInteger("CURL", "Close"));
+		std::string setopt = config.GetString("CURL", "SetOpt");
+		std::string close = config.GetString("CURL", "Close");
 		int32_t delay = config.GetInteger("CURL", "HookDelay", 1);
 
+		if (setopt.empty()) {
+			printf("CurlDump: Invalid Curl_setopt pattern\n");
+			return;
+		}
+
 		// Install hooks
-		std::thread([&]() {
+		std::thread([=]() {
 			std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-			if (!curl_setopt_hook_.Install(setopt, &curl_setopt_)) {
-				printf("CurlDump: Failed to install hooks\n");
-				return;
-			}
+			while (true) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 
-			// "Optional"
-			if (close != nullptr) {
-				if (!curl_close_hook_.Install(close, &curl_close_)) {
-					printf("CurlDump: Failed to install hooks\n");
+				if (!curl_setopt_hook_.Install(indigo::Memory::Find(setopt.c_str()).Get(0).Get<void *>(), &curl_setopt_)) {
+					printf("CurlDump: Failed to install Curl_setopt hook\n");
+					continue;
+				}
+
+				// "Optional"
+				if (!close.empty()) {
+					if (!curl_close_hook_.Install(indigo::Memory::Find(close.c_str()).Get(0).Get<void *>(), &curl_close_)) {
+						printf("CurlDump: Failed to install Curl_close hook\n");
+						continue;
+					}
+				}
+
+				// Open dump
+				std::string file_name = indigo::String::Format("curldump_%i.acp", time(nullptr));
+				if (!acp_dump_.Open(file_name)) {
+					printf("CurlDump: Failed to open %s\n", file_name.c_str());
 					return;
 				}
-			}
 
-			// Open dump
-			std::string file_name = indigo::String::Format("curldump_%i.acp", time(nullptr));
-			if (!acp_dump_.Open(file_name)) {
-				printf("CurlDump: Failed to open %s\n", file_name.c_str());
-				return;
+				break;
 			}
 
 			printf("CurlDump: We're ready to go!\n");

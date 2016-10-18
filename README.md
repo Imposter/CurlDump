@@ -6,7 +6,7 @@ This plugin allows for CURL dumping to an .acp file which can be opened by the s
 Example curldump.ini:
 ```
 [CURL]
-SetOpt=0x0138F740
-Close=0x00000000
-HookDelay=10000
+SetOpt=55 8B EC 83 EC 0C 8B 45 0C 53 33 D2 56 57 89 55 FC 3D 11 27 00 00
+Close=
+HookDelay=5000
 ```
