@@ -45,9 +45,12 @@
 #define DEBUGTOSTREAM
 
 // The extension name that will be used throughout the application.
-#define EXTENSIONNAME "MyExtension"
+#define EXTENSIONNAME "CurlDump"
 
-// The authors on windows should be able to check basic ranges.
 #ifdef _WIN32
+// The authors on windows should be able to check basic ranges.
 #define _CRT_SECURE_NO_WARNINGS
+
+// We don't need extra libs included by Windows.
+#define WIN32_LEAN_AND_MEAN
 #endif

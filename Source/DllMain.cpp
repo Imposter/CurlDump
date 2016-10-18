@@ -9,10 +9,10 @@
 */
 
 #include "Configuration/All.h"
-#include "Curl.h"
 #include "Utilities/Indigo/utility/hook.hpp"
 #include "Utilities/Indigo/utility/acp_dump.hpp"
 #include "Utilities/Indigo/utility/config.hpp"
+#include "Curl.h"
 
 #ifdef _DEBUG
 #include "Utilities/Indigo/utility/console.hpp"
@@ -22,8 +22,10 @@
 #include <cstdarg>
 #include <map>
 #include <mutex>
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
+#define _WINSOCK_DEPRECATED_NO_WARNINGS
+#include <WinSock2.h>
+
+#pragma comment(lib, "ws2_32.lib")
 
 indigo::ACPDump acp_dump_;
 std::map<void *, bool> redirect_set_;
@@ -32,11 +34,19 @@ indigo::CallHook curl_setopt_hook_;
 indigo::CallHook curl_close_hook_;
 
 size_t curl_write_callback(char *data, size_t size, size_t bytes, void *userdata) {
-	// actual size == size * nmemb
+	// actual size == size * bytes
+	acp_dump_.Write(SOCK_STREAM, IPPROTO_TCP, static_cast<uint32_t>(inet_addr("127.0.0.1")),
+		reinterpret_cast<uint16_t>(userdata), reinterpret_cast<uint32_t>(userdata), 1337, data, size * bytes);
+
+	return size * bytes;
 }
 
-size_t curl_read_callback(char *buffer, size_t size, size_t bytes, void *userdata) {
-	// actual size == size * nmemb
+size_t curl_read_callback(char *data, size_t size, size_t bytes, void *userdata) {
+	// actual size == size * bytes
+	acp_dump_.Write(SOCK_STREAM, IPPROTO_TCP, reinterpret_cast<uint32_t>(userdata), 1337, 
+		static_cast<uint32_t>(inet_addr("127.0.0.1")), reinterpret_cast<uint16_t>(userdata), data, size * bytes);
+
+	return size * bytes;
 }
 
 // 0x0138F740 int __cdecl Curl_setopt(void *handle, signed int option, unsigned int *param)

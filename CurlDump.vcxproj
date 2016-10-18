@@ -113,6 +113,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MinimalRebuild>false</MinimalRebuild>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <OptimizeReferences>true</OptimizeReferences>
@@ -129,6 +130,7 @@
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
       <MinimalRebuild>false</MinimalRebuild>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <OptimizeReferences>true</OptimizeReferences>
@@ -145,6 +147,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -162,6 +165,7 @@
       <SDLCheck>true</SDLCheck>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <PreprocessorDefinitions>%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -175,15 +179,38 @@
     <ClInclude Include="Source\Configuration\Defines.h" />
     <ClInclude Include="Source\Configuration\Macros.h" />
     <ClInclude Include="Source\Configuration\Warnings.h" />
+    <ClInclude Include="Source\Curl.h" />
     <ClInclude Include="Source\Utilities\All.h" />
     <ClInclude Include="Source\Utilities\Binarymodification\Hooking.h" />
     <ClInclude Include="Source\Utilities\Binarymodification\Hooks\Hooking.h" />
     <ClInclude Include="Source\Utilities\Binarymodification\ImportAddressTable.h" />
     <ClInclude Include="Source\Utilities\Buffers\Bytebuffer.h" />
     <ClInclude Include="Source\Utilities\Cryptography\Hashing\FNV1.h" />
-    <ClInclude Include="Source\Utilities\Dump\ACPDump.h" />
     <ClInclude Include="Source\Utilities\Files\CSVManager.h" />
     <ClInclude Include="Source\Utilities\Files\Filesystem.h" />
+    <ClInclude Include="Source\Utilities\Indigo\core\buffer.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\core\event.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\core\manual_reset.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\core\singleton.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\core\string.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\core\sys_function.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\platform.h" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\acp_dump.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\config.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\console.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\file.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\hash.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\hook.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\logger.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\memory.hpp" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\minhook\buffer.h" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\minhook\hde\hde32.h" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\minhook\hde\hde64.h" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\minhook\hde\pstdint.h" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\minhook\hde\table32.h" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\minhook\hde\table64.h" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\minhook\MinHook.h" />
+    <ClInclude Include="Source\Utilities\Indigo\utility\minhook\trampoline.h" />
     <ClInclude Include="Source\Utilities\Strings\Debugstring.h" />
     <ClInclude Include="Source\Utilities\Strings\Variadicstring.h" />
   </ItemGroup>
@@ -193,9 +220,14 @@
     <ClCompile Include="Source\Utilities\Binarymodification\ImportAddressTable.cpp" />
     <ClCompile Include="Source\Utilities\Binarymodification\Stomphook.cpp" />
     <ClCompile Include="Source\Utilities\Buffers\Bytebuffer.cpp" />
-    <ClCompile Include="Source\Utilities\Dump\ACPDump.cpp" />
     <ClCompile Include="Source\Utilities\Files\CSVManager.cpp" />
     <ClCompile Include="Source\Utilities\Files\Filesystem.cpp" />
+    <ClCompile Include="Source\Utilities\Indigo\utility\acp_dump.cpp" />
+    <ClCompile Include="Source\Utilities\Indigo\utility\minhook\buffer.c" />
+    <ClCompile Include="Source\Utilities\Indigo\utility\minhook\hde\hde32.c" />
+    <ClCompile Include="Source\Utilities\Indigo\utility\minhook\hde\hde64.c" />
+    <ClCompile Include="Source\Utilities\Indigo\utility\minhook\hook.c" />
+    <ClCompile Include="Source\Utilities\Indigo\utility\minhook\trampoline.c" />
     <ClCompile Include="Source\Utilities\Strings\Debugstring.cpp" />
     <ClCompile Include="Source\Utilities\Strings\Variadicstring.cpp" />
   </ItemGroup>
