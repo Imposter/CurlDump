@@ -81,7 +81,7 @@ public:
 			SetInteger(section, key, default_value);
 			return default_value;
 		}
-		return stoull(data_[section][key]);
+		return strtoll(data_[section][key].c_str(), nullptr, 0);
 	}
 
 	float GetFloat(std::string section, std::string key, float default_value = 0) {

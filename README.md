@@ -7,5 +7,6 @@ Example curldump.ini:
 ```
 [CURL]
 SetOpt=0x0138F740
-Close=0x0138F330
+Close=0x00000000
+HookDelay=10000
 ```

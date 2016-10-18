@@ -22,6 +22,8 @@
 #include <cstdarg>
 #include <map>
 #include <mutex>
+#include <thread>
+#include <chrono>
 #define _WINSOCK_DEPRECATED_NO_WARNINGS
 #include <WinSock2.h>
 
@@ -96,7 +98,7 @@ extern "C" {
 
 	EXPORT_ATTR void __cdecl onInitializationStart(void) {
 #ifdef _DEBUG
-		indigo::Console::Show();
+		indigo::Console::Show("Ayria Console");
 #endif
 
 		// Open the config file
@@ -124,21 +126,34 @@ extern "C" {
 		// Get addresses for Curl_setopt and Curl_close
 		void *setopt = reinterpret_cast<void *>(config.GetInteger("CURL", "SetOpt"));
 		void *close = reinterpret_cast<void *>(config.GetInteger("CURL", "Close"));
+		int32_t delay = config.GetInteger("CURL", "HookDelay", 1);
 
 		// Install hooks
-		if (!curl_setopt_hook_.Install(setopt, &curl_setopt_) || curl_close_hook_.Install(close, &curl_close_)) {
-			printf("CurlDump: Failed to install hooks\n");
-			return;
-		}
+		std::thread([&]() {
+			std::this_thread::sleep_for(std::chrono::milliseconds(delay));
 
-		// Open dump
-		std::string file_name = indigo::String::Format("curldump_%i.acp", time(nullptr));
-		if (!acp_dump_.Open(file_name)) {
-			printf("CurlDump: Failed to open %s\n", file_name.c_str());
-			return;
-		}
+			if (!curl_setopt_hook_.Install(setopt, &curl_setopt_)) {
+				printf("CurlDump: Failed to install hooks\n");
+				return;
+			}
 
-		printf("CurlDump: We're ready to go!\n");
+			// "Optional"
+			if (close != nullptr) {
+				if (!curl_close_hook_.Install(close, &curl_close_)) {
+					printf("CurlDump: Failed to install hooks\n");
+					return;
+				}
+			}
+
+			// Open dump
+			std::string file_name = indigo::String::Format("curldump_%i.acp", time(nullptr));
+			if (!acp_dump_.Open(file_name)) {
+				printf("CurlDump: Failed to open %s\n", file_name.c_str());
+				return;
+			}
+
+			printf("CurlDump: We're ready to go!\n");
+		}).detach();
 	}
 
 	EXPORT_ATTR void __cdecl onInitializationComplete(void) {
